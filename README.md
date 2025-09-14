@@ -43,10 +43,10 @@ You can get DOGE by 2 means: *download the source code* or *get a released packa
 
 ### Configure runtime environment for source code
 
-As a python script, DOGE has the following dependencies: `BioPython` and `PyQt5`. You may install these by pip:
+As a python script, DOGE has the following dependencies: `BioPython` and `PyQt5`. Assuming you are inside the DOGE repository, install the dependencies with:
 
 ```bash
-pip install biopython PyQt5
+pip install -r ./requirements.txt
 ```
 
 The default paths to ProgressiveMauve, MAFFT and TrimAl are respectively:
