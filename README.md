@@ -3,7 +3,7 @@
 **A reference-free, CLI / GUI and multi-platform compatible and portable pipeline for high-quality organelle SNP calling**
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![License](https://img.shields.io/badge/license-GPL-v3-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-GPL-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)]()
 
 ![DOGE icon](https://github.com/Gipsy-The-Sheller/DOGE/blob/main/icon.svg){:height="50px"}
