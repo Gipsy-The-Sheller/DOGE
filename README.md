@@ -3,10 +3,10 @@
 **A reference-free, CLI / GUI and multi-platform compatible and portable pipeline for high-quality organelle SNP calling**
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![License](https://img.shields.io/badge/license-GPL v3-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-GPL-v3-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)]()
 
-![DOGE icon](https://github.com/Gipsy-The-Sheller/DOGE/blob/main/icon.svg)
+![DOGE icon](https://github.com/Gipsy-The-Sheller/DOGE/blob/main/icon.svg){:height="50px"}
 
 DOGE is a cross-platform program aiming to handle SNP calling of organelle genomes and other genomes with complex structural variants (e.g. reversions and rearrangements), using ProgressiveMauve as its core alignment tool. It uses locally collinear blocks (LCBs) as basic SNP calling units and inherently supports auto partitioning based on LCBs. Moreover, DOGE can be run on Linux, Mac OS X and **Windows**, as its dependencies, ProgressiveMauve, MAFFT and TrimAl, are all available on these systems. Apart from command line mode, DOGE has a built-in GUI based on PyQt5. It can not only be started up in command line but also be embedded to other PyQt5-based desktop bioinformatic platforms as a plugin.
 
