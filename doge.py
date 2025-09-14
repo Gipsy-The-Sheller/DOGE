@@ -1,8 +1,21 @@
 #!/usr/bin/env python3
-"""
-DOGE: Using ProgressiveMauve and SNP Calling to Discover Organelle Genomes
-Usage: python doge.py -i input_dir -o output_dir
-"""
+
+# doge.py - A script to discover organelle genome variants.
+# Copyright (C) 2025  Zhi-Jie Xu
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 
 import sys
 import os
@@ -83,17 +96,14 @@ class DOGE_UI(QWidget):
         
         for field in fields_to_highlight:
             field.setStyleSheet(highlighted_style)
-            # 添加提示文本
             field.setToolTip("This argument comes from preset.")
 
     def init_ui(self):
         main_layout = QVBoxLayout()
         
-        # 1. 文件夹选择部分
         folder_group = QGroupBox("Input/Output Directories")
         folder_layout = QVBoxLayout()
         
-        # 输入目录
         input_layout = QHBoxLayout()
         input_layout.addWidget(QLabel("Input Directory:"))
         self.input_edit = QLineEdit()
@@ -104,7 +114,6 @@ class DOGE_UI(QWidget):
         input_layout.addWidget(input_btn)
         folder_layout.addLayout(input_layout)
         
-        # 输出目录
         output_layout = QHBoxLayout()
         output_layout.addWidget(QLabel("Output Directory:"))
         self.output_edit = QLineEdit()
@@ -118,11 +127,9 @@ class DOGE_UI(QWidget):
         folder_group.setLayout(folder_layout)
         main_layout.addWidget(folder_group)
         
-        # 2. 参数配置部分
         param_group = QGroupBox("Analysis Parameters")
         param_layout = QVBoxLayout()
         
-        # 2.1 Mauve配置
         mauve_layout = QHBoxLayout()
         mauve_layout.addWidget(QLabel("ProgressiveMauve Path:"))
         self.mauve_edit = QLineEdit()
@@ -133,7 +140,6 @@ class DOGE_UI(QWidget):
         mauve_layout.addWidget(mauve_btn)
         param_layout.addLayout(mauve_layout)
         
-        # 2.2 MAFFT配置
         self.mafft_check = QCheckBox("Refine alignment with MAFFT (May be Harmful!)")
         self.mafft_check.setChecked(False)
         self.mafft_check.stateChanged.connect(self.toggle_mafft)
@@ -152,7 +158,6 @@ class DOGE_UI(QWidget):
         param_layout.addWidget(self.mafft_check)
         param_layout.addLayout(mafft_layout)
         
-        # 2.3 覆盖度过滤
         self.filter_check = QCheckBox("Filter by sequence coverage")
         self.filter_check.setChecked(True)
         self.filter_check.stateChanged.connect(self.toggle_filter)
@@ -169,7 +174,6 @@ class DOGE_UI(QWidget):
         param_layout.addWidget(self.filter_check)
         param_layout.addLayout(filter_layout)
         
-        # 2.4 TrimAl配置
         self.trimal_check = QCheckBox("Trim alignments with TrimAl")
         self.trimal_check.setChecked(True)
         self.trimal_check.stateChanged.connect(self.toggle_trimal)
@@ -189,7 +193,6 @@ class DOGE_UI(QWidget):
         param_group.setLayout(param_layout)
         main_layout.addWidget(param_group)
         
-        # 3. 运行按钮和日志
         run_layout = QHBoxLayout()
         self.run_btn = QPushButton("Run Analysis")
         self.run_btn.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
@@ -204,7 +207,7 @@ class DOGE_UI(QWidget):
         
         main_layout.addLayout(run_layout)
         
-        # 日志显示区域
+        # Logger
         log_group = QGroupBox("Analysis Log")
         log_layout = QVBoxLayout()
         self.log_text = QTextEdit()
@@ -215,7 +218,6 @@ class DOGE_UI(QWidget):
         
         self.setLayout(main_layout)
     
-    # 文件夹选择方法
     def select_input_dir(self):
         directory = QFileDialog.getExistingDirectory(self, "Select Input Directory")
         if directory:
@@ -226,7 +228,6 @@ class DOGE_UI(QWidget):
         if directory:
             self.output_edit.setText(directory)
     
-    # 工具定位方法
     def locate_mauve(self):
         path, _ = QFileDialog.getOpenFileName(self, "Locate ProgressiveMauve")
         if path:
@@ -245,7 +246,6 @@ class DOGE_UI(QWidget):
             self.trimal_edit.setText(path)
             self.trimal_path = path
     
-    # 切换参数可见性
     def toggle_mafft(self, state):
         self.mafft_edit.setEnabled(state)
         self.mafft_btn.setEnabled(state)
@@ -266,10 +266,8 @@ class DOGE_UI(QWidget):
         #         widget.setEnabled(state)
     
     def validate_inputs(self):
-        """验证所有输入是否有效"""
         errors = []
         
-        # 检查输入输出目录
         if not self.input_edit.text():
             errors.append("Input directory is required")
         elif not os.path.isdir(self.input_edit.text()):
@@ -278,25 +276,20 @@ class DOGE_UI(QWidget):
         if not self.output_edit.text():
             errors.append("Output directory is required")
             
-        # 检查Mauve路径
         if not self.mauve_edit.text():
             errors.append("ProgressiveMauve path is required")
         elif not os.path.isfile(self.mauve_edit.text()):
             errors.append("ProgressiveMauve executable not found")
             
-        # 检查MAFFT路径（如果启用）
         if self.mafft_check.isChecked() and not self.mafft_edit.text():
             errors.append("MAFFT path is required when refinement is enabled")
         elif self.mafft_check.isChecked() and not os.path.isfile(self.mafft_edit.text()):
             errors.append("MAFFT executable not found")
-            
-        # 检查TrimAl路径（如果启用）
         if self.trimal_check.isChecked() and not self.trimal_edit.text():
             errors.append("TrimAl path is required when trimming is enabled")
         elif self.trimal_check.isChecked() and not os.path.isfile(self.trimal_edit.text()):
             errors.append("TrimAl executable not found")
             
-        # 检查输入目录中是否有FASTA文件
         if self.input_edit.text():
             fasta_files = [f for f in os.listdir(self.input_edit.text()) 
                           if f.endswith(('.fasta', '.fa', '.fna'))]
@@ -358,7 +351,6 @@ class DOGE_UI(QWidget):
         self.log_text.append(f"Final Output: {results['nexus']}")
         self.log_text.append(f"Proceeded {results['lcb_count']} LCBs")
         
-        # 启用UI
         self.run_btn.setEnabled(True)
         self.log_btn.setEnabled(True)
         QMessageBox.information(self, "Completed", "Analysis Completed Successfully!")
@@ -491,27 +483,21 @@ def split_xmfa(xmfa_file, output_dir):
         print(f"Error: File '{xmfa_file}' not found!")
         sys.exit(1)
     
-    # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
     
-    # Read file content
     with open(xmfa_file, 'r') as f:
         lines = f.readlines()
     
-    # Initialize variables
     lcb_blocks = []
     current_block = []
     in_block = False
     block_count = 0
     
-    # Regex pattern for separators
     separator_pattern = re.compile(r'^[=#]+$')
     
-    # Process each line
     for line in lines:
         stripped_line = line.strip()
         
-        # Check if separator line
         if separator_pattern.match(stripped_line):
             if in_block and current_block:
                 lcb_blocks.append(current_block)
@@ -519,20 +505,16 @@ def split_xmfa(xmfa_file, output_dir):
                 in_block = False
             continue
         
-        # Sequence header line
         if line.startswith('>'):
             in_block = True
-            # Clean up header format
             clean_header = re.sub(r'>\s*(\d+)\s*:\s*(\d+)\s*-\s*(\d+)\s*', r'>\1:\2-\3', line)
             current_block.append(clean_header)
         elif in_block:
             current_block.append(line)
     
-    # Add last block if exists
     if current_block:
         lcb_blocks.append(current_block)
     
-    # Write separate FASTA files
     output_files = []
     for i, block in enumerate(lcb_blocks):
         output_file = os.path.join(output_dir, f"LCB_{i+1}.fasta")
@@ -568,10 +550,8 @@ def align_all_lcbs(mafft_path, lcb_files, output_dir):
     os.makedirs(output_dir, exist_ok=True)
     aligned_files = []
     
-    # Prepare output paths
     output_paths = [os.path.join(output_dir, f"aligned_{os.path.basename(f)}") for f in lcb_files]
     
-    # Run MAFFT in parallel
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = []
         for input_file, output_file in zip(lcb_files, output_paths):
@@ -628,7 +608,6 @@ def trim_lcbs(trimal_path, aligned_files, output_dir):
             print(f"TrimAl completed for {os.path.basename(aligned_file)}")
             return output_file
     
-    # 使用线程池并行处理
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = [executor.submit(run_trimal, file) for file in aligned_files]
         for future in concurrent.futures.as_completed(futures):
@@ -640,26 +619,21 @@ def trim_lcbs(trimal_path, aligned_files, output_dir):
 
 def create_supermatrix(aligned_files, output_file):
     """Combine aligned LCBs into a supermatrix with proper gap handling"""
-    # 第一步：收集所有样本ID
     all_sample_ids = set()
-    lcb_lengths = []  # 存储每个LCB的长度
+    lcb_lengths = []  
     
-    # 遍历所有LCB文件收集样本ID
     for aligned_file in aligned_files:
         for record in SeqIO.parse(aligned_file, "fasta"):
-            sample_id = record.id.split(':')[0]  # 提取样本ID
+            sample_id = record.id.split(':')[0]
             all_sample_ids.add(sample_id)
     
-    # 第二步：创建样本序列字典，初始化为空字符串
     sequences = {sample_id: [] for sample_id in all_sample_ids}
     partitions = []
     current_position = 1
     
-    # 第三步：处理每个LCB
     for i, aligned_file in enumerate(aligned_files):
         lcb_id = i + 1
         
-        # 获取当前LCB中的样本序列
         lcb_sequences = {}
         lcb_length = 0
         for record in SeqIO.parse(aligned_file, "fasta"):
@@ -667,29 +641,24 @@ def create_supermatrix(aligned_files, output_file):
             seq_str = str(record.seq)
             lcb_sequences[sample_id] = seq_str
             
-            # 记录LCB长度（所有序列长度应该相同）
             if lcb_length == 0:
                 lcb_length = len(seq_str)
         
-        # 记录分区信息
         partitions.append((lcb_id, current_position, current_position + lcb_length - 1))
         current_position += lcb_length
         
-        # 为每个样本添加序列或gap
         for sample_id in all_sample_ids:
             if sample_id in lcb_sequences:
-                # 样本存在于此LCB中，添加序列
+
                 sequences[sample_id].append(lcb_sequences[sample_id])
             else:
-                # 样本缺失此LCB，添加gap
+
                 sequences[sample_id].append('?' * lcb_length)
     
-    # 第四步：连接所有LCB序列
     concatenated_sequences = {}
     for sample_id, seq_parts in sequences.items():
         concatenated_sequences[sample_id] = ''.join(seq_parts)
     
-    # 第五步：写入超级矩阵
     with open(output_file, 'w') as f_out:
         for sample_id, seq in concatenated_sequences.items():
             f_out.write(f">{sample_id}\n{seq}\n")
@@ -700,69 +669,62 @@ def create_supermatrix(aligned_files, output_file):
 
 def call_snps(supermatrix_file, partitions, output_prefix):
     """Call SNPs from supermatrix and create partitioned NEXUS file"""
-    # 解析序列并存储为字典
+
     sequences_dict = {}
     sample_ids = []
     for record in SeqIO.parse(supermatrix_file, "fasta"):
-        sequences_dict[record.id] = str(record.seq)
+        sequence = str(record.seq)
+        if set(sequence) == {'-'}: # process missing sequence in a single LCB
+            sequence_dict[record.id] = '?'*len(sequence)
+        else:
+            sequences_dict[record.id] = str(record.seq)
         sample_ids.append(record.id)
     
-    # 检查所有序列长度是否一致
     seq_length = len(next(iter(sequences_dict.values())))
     if any(len(seq) != seq_length for seq in sequences_dict.values()):
         print("Error: Sequences in supermatrix have different lengths!")
         return None
     
-    # 创建位置到分区的映射
+    # partitioning
     position_to_partition = {}
     for part_id, start, end in partitions:
         for pos in range(start, end + 1):
             position_to_partition[pos] = part_id
     
-    # 查找变异位点（允许存在缺失数据）
+    # SNP calling
     variable_positions = []
     for pos in range(seq_length):
-        # 获取该位置的所有碱基
         bases = set()
         for seq in sequences_dict.values():
             base = seq[pos]
-            if base not in ['-', '?']:  # 忽略gap字符
+            if base not in ['-', '?']:
                 bases.add(base)
         
-        # 如果存在变异（至少两个不同的非gap碱基）
         if len(bases) > 1:
             variable_positions.append(pos)
     
-    # 创建SNP矩阵（处理缺失LCB）
     snp_matrix = []
     for sample_id in sample_ids:
         snp_seq = []
         for pos in variable_positions:
             base = sequences_dict[sample_id][pos]
-            # 如果该位置是gap（表示整个LCB缺失），标记为缺失符'?'
-            if base == '-':
-                snp_seq.append('?')
-            else:
-                snp_seq.append(base)
+            snp_seq.append(base)
         snp_matrix.append(''.join(snp_seq))
     
-    # 创建NEXUS文件
     nexus_file = f"{output_prefix}.nex"
     with open(nexus_file, 'w') as f:
-        # NEXUS头部
         f.write("#NEXUS\n\n")
         f.write("BEGIN DATA;\n")
         f.write(f"DIMENSIONS NTAX={len(sample_ids)} NCHAR={len(variable_positions)};\n")
         f.write("FORMAT DATATYPE=DNA MISSING=? GAP=-;\n")
         f.write("MATRIX\n")
         
-        # 写入序列
         for sample_id, seq in zip(sample_ids, snp_matrix):
             f.write(f"{sample_id:<20} {seq}\n")
         
         f.write(";\nEND;\n\n")
         
-        # 写入分区信息
+        # partition scheme
         f.write("BEGIN SETS;\n")
         
         partition_positions = defaultdict(list)
@@ -777,6 +739,7 @@ def call_snps(supermatrix_file, partitions, output_prefix):
         
         f.write("END;\n")
 
+        # create another partition NEXUS file for modelfinder / other programs
         with open(f'{output_prefix}_iqpartition.nex', 'w') as fp:
             fp.write('#NEXUS\n')
             fp.write('begin sets;\n')
@@ -837,14 +800,12 @@ def main():
         raise Excption("input and output directorirs required!")
         return
     
-    # Create output directory structure
     os.makedirs(args.output, exist_ok=True)
     mauve_output = os.path.join(args.output, "mauve_alignment.xmfa")
     lcb_dir = os.path.join(args.output, "lcbs")
     aligned_dir = os.path.join(args.output, "aligned_lcbs")
     trimmed_dir = os.path.join(args.output, "trimmed_lcbs")
     
-    # Run pipeline steps
     print("\n=== Running Mauve alignment ===")
     mauve_output_file = run_mauve(args.mauve, args.input, mauve_output)
     
@@ -880,5 +841,6 @@ if __name__ == "__main__":
     # Next time I may add a "--continue" function for breakpoints
 
 class Plugin:
+    # This is the plugin entry point for YRTools.
     def run(self):
         return DOGE_UI()
