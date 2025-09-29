@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+__version__ = "1.0.1"
 
 import sys
 import os
@@ -422,7 +423,7 @@ class AnalysisWorker(QThread):
                 lcb_files = trim_lcbs(
                     self.params['trimal_path'],
                     lcb_files,
-                    trimmed_dir
+                    trimmed_dir 
                 )
             self.progress_update.emit(current_step, total_steps)
             current_step += 1
@@ -667,6 +668,102 @@ def create_supermatrix(aligned_files, output_file):
     print(f"Created supermatrix with {len(concatenated_sequences)} samples and {total_length} positions")
     return output_file, partitions
 
+def extract_core_snps(supermatrix_file, partitions, output_prefix):
+    """Extract core SNPs (present in all samples without gaps/missing) and write NEXUS.
+
+    Core SNP definition here: positions where every sample has a canonical base
+    (A/C/G/T, case-insensitive) and there is variation among samples.
+    """
+
+    valid_bases = set(['A', 'C', 'G', 'T'])
+
+    sequences_dict = {}
+    sample_ids = []
+    for record in SeqIO.parse(supermatrix_file, "fasta"):
+        seq = str(record.seq).upper()
+        sequences_dict[record.id] = seq
+        sample_ids.append(record.id)
+
+    if not sequences_dict:
+        return None
+
+    seq_length = len(next(iter(sequences_dict.values())))
+    if any(len(seq) != seq_length for seq in sequences_dict.values()):
+        print("Error: Sequences in supermatrix have different lengths!")
+        return None
+
+    # Global position -> partition id
+    position_to_partition = {}
+    for part_id, start, end in partitions:
+        for pos in range(start - 1, end):  # convert to 0-based
+            position_to_partition[pos] = part_id
+
+    # Identify core variable positions
+    core_variable_positions = []  # 0-based indices
+    for pos in range(seq_length):
+        bases = []
+        is_core = True
+        for seq in sequences_dict.values():
+            base = seq[pos]
+            if base not in valid_bases:
+                is_core = False
+                break
+            bases.append(base)
+        if not is_core:
+            continue
+        if len(set(bases)) > 1:
+            core_variable_positions.append(pos)
+
+    # Build SNP matrix
+    snp_matrix = []
+    for sample_id in sample_ids:
+        seq = sequences_dict[sample_id]
+        snp_seq = [seq[pos] for pos in core_variable_positions]
+        snp_matrix.append(''.join(snp_seq))
+
+    nexus_file = f"{output_prefix}\\core_snps.nex"
+    with open(nexus_file, 'w') as f:
+        f.write("#NEXUS\n\n")
+        f.write("BEGIN DATA;\n")
+        f.write(f"DIMENSIONS NTAX={len(sample_ids)} NCHAR={len(core_variable_positions)};\n")
+        f.write("FORMAT DATATYPE=DNA MISSING=? GAP=-;\n")
+        f.write("MATRIX\n")
+
+        for sample_id, seq in zip(sample_ids, snp_matrix):
+            f.write(f"{sample_id:<20} {seq}\n")
+
+        f.write(";\nEND;\n\n")
+
+        # Partition scheme for core SNPs (map original positions to SNP columns)
+        f.write("BEGIN SETS;\n")
+        partition_positions = defaultdict(list)
+        for i, pos in enumerate(core_variable_positions):
+            part_id = position_to_partition.get(pos)
+            if part_id is not None:
+                partition_positions[part_id].append(i + 1)  # 1-based in NEXUS
+
+        for part_id, positions in partition_positions.items():
+            if positions:
+                start_i = min(positions)
+                end_i = max(positions)
+                f.write(f"CHARSET LCB_{part_id} = {start_i}-{end_i};\n")
+        f.write("END;\n")
+
+    # Also write an IQ-TREE partition file limited to core SNP columns
+    iqpartition_file = f"{output_prefix}\\core_snps_iqpartition.nex"
+    with open(iqpartition_file, 'w') as fp:
+        fp.write('#NEXUS\n')
+        fp.write('begin sets;\n')
+        for part_id, positions in partition_positions.items():
+            if positions:
+                start_i = min(positions)
+                end_i = max(positions)
+                fp.write(f"CHARSET LCB_{part_id} = {start_i}-{end_i};\n")
+        fp.write(';\nend;\n')
+
+    print(f"Created core SNP NEXUS file: {nexus_file}")
+    return nexus_file
+
 def call_snps(supermatrix_file, partitions, output_prefix):
     """Call SNPs from supermatrix and create partitioned NEXUS file"""
 
@@ -778,7 +875,7 @@ def launch_gui_with_args(args):
     sys.exit(app.exec_())
 
 def main():
-    parser = argparse.ArgumentParser(description='DiscoverOrganelle: Automated pipeline for organelle genome analysis')
+    parser = argparse.ArgumentParser(description='DOGE: Discover Organelle Genome Variants')
     parser.add_argument('-i', '--input', help='Input directory with genome FASTA files [required]')
     parser.add_argument('-o', '--output', help='Output directory for results [required]')
     parser.add_argument('--mauve', default='./mauve/progressiveMauve.exe', help='Path to Mauve executable')
@@ -787,11 +884,17 @@ def main():
     parser.add_argument('-l', '--lowest_coverage', type=int, default='3', help='Minimum number of sequences in an LCB file')
     parser.add_argument('-r', '--refine_alignment', default='False', help='Refine MAUVE alignment of LCBs with MAFFT (Warning: perhaps harmful for distantly related taxa!)')
     parser.add_argument('-f', '--filter', default='True', help='Filter out low-coverage LCBs')
+    parser.add_argument('-c', '--core', action='store_true', help='Only extract core SNPs (resemble parSNP)')
     parser.add_argument('-t', '--trim', default='True', help='Trim gap regions with TrimAl before SNP calling')
     parser.add_argument('-w', '--window', action='store_true', help='Launch GUI with pre-filled parameters')
+    parser.add_argument('-v', '--version', action='store_true', help='Show version information')
     # parser.add_argument('--fasttree', default='FastTree', help='Path to FastTree executable')
     
     args = parser.parse_args()
+
+    if args.version:
+        print(f"DOGE version {__version__}")
+        return
 
     if args.window:
         launch_gui_with_args(args)
@@ -817,12 +920,12 @@ def main():
         aligned_files = align_all_lcbs(args.mafft, lcb_files, aligned_dir)
         lcb_files = aligned_files
 
-    if args.filter == 'True':
+    if args.filter == 'True' or args.core == 'True':
         print("\n=== Filtering LCB Coverages ===")
         filtered_lcb_files = filter_lcbs(args.lowest_coverage, lcb_files)
         lcb_files = filtered_lcb_files
 
-    if args.trim == 'True':
+    if args.trim == 'True' and args.core == 'False':
         print("\n=== Trimming Valid LCBs ===")
         trimmed_filtered_lcb_files = trim_lcbs(args.trimal, lcb_files, trimmed_dir)
         lcb_files = trimmed_filtered_lcb_files
@@ -830,9 +933,15 @@ def main():
     print("\n=== Creating supermatrix ===")
     supermatrix_file = os.path.join(args.output, "supermatrix.fasta")
     supermatrix, partitions = create_supermatrix(lcb_files, supermatrix_file)
-    
-    print("\n=== Calling SNPs and creating partitioned NEXUS ===")
-    nexus_file = call_snps(supermatrix, partitions, os.path.join(args.output, "snps"))
+
+    if args.core:
+        print("\n=== Extracting Core SNPs ===")
+        core_snps = extract_core_snps(supermatrix, partitions, args.output)
+        nexus_file = core_snps
+    else:
+        print("\n=== Calling SNPs and creating partitioned NEXUS ===")
+        nexus_file = call_snps(supermatrix, partitions, os.path.join(args.output, "snps"))
+
     
     print("\n=== DiscoverOrganelle pipeline completed successfully! ===")
 
